@@ -1,0 +1,22 @@
+[
+    {
+        "stage": 2,
+        "message": "Dedu malo dirnulo."
+    },
+    {
+        "stage": 3,
+        "message": "Dedu je ćaćnulo."
+    },
+    {
+        "stage": 4,
+        "message": "Deda se skoro polomio."
+    },
+    {
+        "stage": 5,
+        "message": "Deda je dobio cirozu jetre."
+    },
+    {
+        "stage":6,
+        "message": "Deda je polomio kičmu pri izlasku iz krčme."
+    }
+]
