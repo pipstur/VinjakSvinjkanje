@@ -35,8 +35,8 @@ big_font = pygame.font.SysFont("garamond", 64, bold=True)
 small_font = pygame.font.SysFont("garamond", 22)
 
 # --- SPRITES (placeholder) ---
-mouth_img = pygame.Surface((100, 70))
-mouth_img.fill(RED)
+glass_img = pygame.image.load("slike/casa_pixel.png").convert_alpha()
+glass_img = pygame.transform.scale(glass_img, (100, 100))
 
 vinjak_folder = "slike/flase/"
 
@@ -44,16 +44,16 @@ vinjak_folder = "slike/flase/"
 cep_img = pygame.image.load("slike/vinjakceppixel2.png").convert_alpha()
 cep_img = pygame.transform.scale(cep_img, (40, 40))
 
-background_img = pygame.image.load("slike/pozadina.png").convert()
+background_img = pygame.image.load("slike/pozadina.jpeg").convert()
 background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
-leaderboard_img = pygame.image.load("slike/leaderboard.png").convert()
+leaderboard_img = pygame.image.load("slike/leaderboard.jpeg").convert()
 leaderboard_img = pygame.transform.scale(leaderboard_img, (WIDTH, HEIGHT))
 
-main_img = pygame.image.load("slike/pozadina_main.png").convert()
+main_img = pygame.image.load("slike/pozadina_main.jpeg").convert()
 main_img = pygame.transform.scale(main_img, (WIDTH, HEIGHT))
 
-game_over_img = pygame.image.load("slike/game_over.png").convert()
+game_over_img = pygame.image.load("slike/game_over.jpeg").convert()
 game_over_img = pygame.transform.scale(game_over_img, (WIDTH, HEIGHT))
 
 
@@ -76,7 +76,7 @@ class Vinjak(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = mouth_img
+        self.image = glass_img
         self.rect = self.image.get_rect(midbottom=(WIDTH // 2, HEIGHT - 20))
 
     def update(self):
@@ -332,7 +332,6 @@ def show_start_menu():
 
         # --- Potamnjeni overlay (kao sloj ispod teksta) ---
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))  # RGBA: crno, 150 = providnost (0-255)
         screen.blit(overlay, (0, 0))
         # -----------------------------------------------
 
@@ -372,7 +371,6 @@ def show_game_over(score):
         screen.blit(game_over_img, (0, 0))
 
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))  # RGBA: crno, 150 = providnost (0-255)
         screen.blit(overlay, (0, 0))
 
         title = big_font.render("Ti si svoje odvinjačio.", True, RED)
