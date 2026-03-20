@@ -1,10 +1,12 @@
 """
-🍇 Vinjak Festival App - Multi-Page
+🍇 Vinjak Festival App - Multi-Page sa Navbar-om
 
 Stranice:
-1. Home - Leaderboard za izbor Vinjaklije
-2. Priče - Submission + Feed sa pričama
+1. Vinjaklija - Leaderboard za izbor Vinjaklije
+2. Ispovedaonica - Submission + Feed sa pričama
 3. Sklekovi - Leaderboard za sklekove
+4. Igrica - Leaderboard za Vinjak igricu
+5. Galerija - Oslikane flaše sa Drive-a
 
 Clean Code:
 - Separacija concerns (config, data, UI)
@@ -12,6 +14,7 @@ Clean Code:
 - Docstrings za sve funkcije
 - DRY princip
 - Error handling
+- Navbar na vrhu umesto sidebar-a
 """
 
 import os
@@ -191,7 +194,6 @@ class GoogleSheetManager:
             if not worksheet:
                 return False
 
-            # Koristi append_row sa user_entered_value za sigurnost
             worksheet.append_row(row_data, value_input_option="USER_ENTERED")
             logger.info(
                 f"✓ Red dodan u Sheet (total redaka sada: {len(worksheet.get_all_records())})"
@@ -239,7 +241,6 @@ class DataProcessor:
             df = DataProcessor.clean_columns(df)
             logger.info(f"Kolone: {list(df.columns)}")
 
-            # Pronađi kolone
             ime_col = DataProcessor.find_column(
                 df,
                 keywords=["ime", "nadimak"],
@@ -249,7 +250,6 @@ class DataProcessor:
             poeni_col = DataProcessor.find_column(df, keywords=["poeni"])
             akt_col = DataProcessor.find_column(df, keywords=["aktivnost"])
 
-            # Validacija
             if not all([ime_col, prez_col, poeni_col]):
                 error_msg = f"Kolone nisu pronađene. Dostupne: {list(df.columns)}"
                 logger.error(error_msg)
@@ -260,12 +260,10 @@ class DataProcessor:
                 f"poeni={poeni_col}, aktivnost={akt_col}"
             )
 
-            # Kreiraj puno ime
             df["ucesnik"] = (
                 df[ime_col].astype(str).str.strip() + " " + df[prez_col].astype(str).str.strip()
             )
 
-            # Konvertuj poene
             df["poeni_int"] = pd.to_numeric(df[poeni_col], errors="coerce").fillna(0).astype(int)
 
             df["_akt_col"] = akt_col
@@ -296,35 +294,156 @@ class DataProcessor:
 def setup_page_config() -> None:
     """Inicijalizuj Streamlit konfiguraciju"""
     st.set_page_config(
-        page_title="🍇 Vinjak Festival",
+        page_title="Vinjak Festival",
         page_icon="🍇",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed",
     )
 
 
 def setup_custom_css() -> None:
-    """Postavi custom CSS"""
+    """Postavi custom CSS - navbar na vrhu sa toplom braon/žutom/ljubičastom paletom"""
     st.markdown(
         """
         <style>
+        /* Hide sidebar */
+        [data-testid="stSidebar"] { display: none; }
+        
+        /* Main */
         .main {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #5a3f4b 0%, #8b6f7f 100%);
             color: white;
+            padding: 0 !important;
         }
+        [data-testid="stAppViewContainer"] { padding: 0 !important; }
+        
+        /* ===== NAVBAR ===== */
+        .navbar {
+            background: linear-gradient(90deg, #6b4423 0%, #8b5a3c 30%, #7d5a57 70%, #6b4a63 100%);
+            padding: 1.2rem 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+            border-bottom: 3px solid #d4a574;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 0 0 15px 15px;
+        }
+        
+        .navbar-title {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #ffd699;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+            letter-spacing: 1px;
+        }
+        
+        /* Navbar buttons - styling */
+        .nav-button {
+            background: linear-gradient(135deg, #d4a574 0%, #e8c4a0 100%) !important;
+            color: #6b4423 !important;
+            font-weight: 700 !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 8px 16px !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(212, 165, 116, 0.4) !important;
+        }
+        
+        /* Content wrapper */
+        .content-wrapper {
+            padding: 0 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Components */
         .stMetric {
-            background-color: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.15) 0%, rgba(212, 165, 116, 0.05) 100%);
             padding: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #ffd700;
+            border-radius: 12px;
+            border-left: 5px solid #d4a574;
+            border-top: 1px solid rgba(212, 165, 116, 0.3);
+            backdrop-filter: blur(10px);
         }
+        
         h1 {
             text-align: center;
-            color: #ffd700;
+            color: #ffd699;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-top: 2rem;
+            font-size: 2.5rem;
+            letter-spacing: 0.5px;
         }
-        h2 {
-            color: #ffd700;
+        
+        h2 { 
+            color: #d4a574;
+            font-weight: 700;
+        }
+        
+        .stForm {
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(212, 165, 116, 0.05) 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid rgba(212, 165, 116, 0.3);
+        }
+        
+        .stButton > button {
+            background: linear-gradient(135deg, #d4a574 0%, #e8c4a0 100%) !important;
+            color: #6b4423 !important;
+            font-weight: bold !important;
+            border: none !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .stButton > button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(212, 165, 116, 0.4) !important;
+        }
+        
+        /* Dataframe styling */
+        [data-testid="stDataFrame"] {
+            background: rgba(212, 165, 116, 0.08) !important;
+            border-radius: 10px !important;
+            border: 1px solid rgba(212, 165, 116, 0.2) !important;
+        }
+        
+        /* Text input */
+        .stTextInput, .stTextArea {
+            color: white !important;
+        }
+        
+        .stTextInput > div > div > input,
+        .stTextArea > div > div > textarea {
+            background-color: rgba(107, 68, 35, 0.6) !important;
+            color: white !important;
+            border: 1px solid rgba(212, 165, 116, 0.3) !important;
+        }
+        
+        /* Info/Warning boxes */
+        [data-testid="stInfo"] {
+            background-color: rgba(212, 165, 116, 0.15) !important;
+            border-left: 4px solid #d4a574 !important;
+        }
+        
+        [data-testid="stWarning"] {
+            background-color: rgba(180, 120, 70, 0.2) !important;
+            border-left: 4px solid #d4a574 !important;
+        }
+        
+        [data-testid="stSuccess"] {
+            background-color: rgba(150, 180, 80, 0.2) !important;
+            border-left: 4px solid #96b450 !important;
+        }
+        
+        [data-testid="stError"] {
+            background-color: rgba(220, 100, 100, 0.2) !important;
+            border-left: 4px solid #dc6464 !important;
         }
         </style>
         """,
@@ -342,35 +461,30 @@ def page_home(manager: GoogleSheetManager) -> None:
     st.title("IZBOR ZA VINJAKLIJU")
     st.markdown("#### Live ranglist - Realtime ažuriranje")
 
-    # Refresh dugme
     col1, col2 = st.columns([3, 1])
     with col2:
-        if st.button("🔄 Osvežite", width="stretch"):
+        if st.button("Osvežite", width="stretch"):
             st.cache_resource.clear()
             st.rerun()
 
-    # Učitaj podatke
     raw_df = manager.load_data(manager.config.sheet_aktivnosti)
     if raw_df.empty:
         st.warning("⚠️ Nema podataka")
         return
 
-    # Obrada
     df, error = DataProcessor.process_leaderboard_data(raw_df)
     if error:
         st.error(f"❌ {error}")
         return
 
-    # Kreiraj ranglistu
     leaderboard = DataProcessor.create_leaderboard(df)
 
-    # TOP 3
     st.markdown("---")
-    st.subheader("🏆 TOP 3 VINJAČKA UŽIVAOCA")
+    st.subheader("TOP 3 VINJAČKA UŽIVAOCA")
 
     top3 = leaderboard.head(3).copy()
     cols = st.columns(3)
-    medals = ["🥇 VINJAKLIJA", "🥈 DRUGOVINJAK", "🥉 TROVINJAK"]
+    medals = ["VINJAKLIJA", "DRUGOVINJAK", "TROVINJAK"]
 
     for col, medal in zip(cols, medals):
         with col:
@@ -381,9 +495,8 @@ def page_home(manager: GoogleSheetManager) -> None:
             else:
                 st.metric(medal, "---", "")
 
-    # Kompletna ranglista
     st.markdown("---")
-    st.subheader("📊 KOMPLETNA RANGLISTA")
+    st.subheader("KOMPLETNA RANGLISTA")
     display_df = leaderboard[["Rang", "Učesnik", "Poeni"]].copy()
     st.dataframe(display_df, width="stretch", hide_index=True, height=400)
 
@@ -391,18 +504,14 @@ def page_home(manager: GoogleSheetManager) -> None:
 def page_price(manager: GoogleSheetManager) -> None:
     """Priče stranica sa submission formom i feed-om"""
     st.title("VINJAK ISPOVEDAONICA")
-    st.markdown(
-        "Vreme je da tvoje Vinjačke dogodovštine napokon dobiju platformu! "
-        "Napiši svoju priču i deli sa drugima!"
-    )
+    st.markdown("Vreme je da tvoje Vinjačke dogodovštine napokon dobiju platformu!")
 
-    # SUBMISSION FORMA
-    st.subheader("✍️ Podeli svoju priču!")
+    st.subheader("Podeli svoju priču!")
 
     with st.form("story_form", clear_on_submit=True):
         name = st.text_input("Tvoje ime / Nadimak", max_chars=100)
-        story = st.text_area("Tvoja dogodovština ili ispovest", height=150, max_chars=1000)
-        submitted = st.form_submit_button("📝 Pošalji priču", use_container_width=True)
+        story = st.text_area("Tvoja događovština ili ispovest", height=150, max_chars=1000)
+        submitted = st.form_submit_button("Pošalji priču", use_container_width=True)
 
         if submitted:
             if not name or not story:
@@ -412,7 +521,6 @@ def page_price(manager: GoogleSheetManager) -> None:
                 row = [timestamp, name, story]
 
                 logger.info(f"Slanje reda: {row}")
-                st.info(f"Debug: Dodavam red: {row}")
 
                 if manager.append_row(manager.config.sheet_price, row):
                     st.success("✅ Priča poslata!")
@@ -422,13 +530,12 @@ def page_price(manager: GoogleSheetManager) -> None:
                 else:
                     st.error("❌ Greška pri slanju priče")
 
-    # FEED
     st.markdown("---")
-    st.subheader("📰 FEED PRIČA")
+    st.subheader("FEED PRIČA")
 
     df = manager.load_data(manager.config.sheet_price)
     if df.empty:
-        st.info("📝 Nema priča - budi prvi!")
+        st.info("Nema priča - budi prvi!")
         return
 
     df = DataProcessor.clean_columns(df)
@@ -441,7 +548,6 @@ def page_price(manager: GoogleSheetManager) -> None:
         st.error("❌ Kolone nisu pronađene")
         return
 
-    # Prikaži priče (novije prvo)
     for idx, row in df.iloc[::-1].iterrows():
         with st.container(border=True):
             col1, col2 = st.columns([3, 1])
@@ -463,7 +569,7 @@ def page_sklekovi(manager: GoogleSheetManager) -> None:
 
     col1, col2 = st.columns([3, 1])
     with col2:
-        if st.button("🔄 Osvežite", width="stretch"):
+        if st.button("Osvežite", width="stretch", key="sklekovi_refresh"):
             st.cache_resource.clear()
             st.rerun()
 
@@ -492,13 +598,12 @@ def page_sklekovi(manager: GoogleSheetManager) -> None:
         leaderboard = leaderboard.sort_values("Sklekovi", ascending=False).reset_index(drop=True)
         leaderboard["Rang"] = range(1, len(leaderboard) + 1)
 
-        # TOP 3
         st.markdown("---")
-        st.subheader("🏆 TOP 3 SKLEKAČA")
+        st.subheader("TOP 3 SKLEKAČA")
 
         top3 = leaderboard.head(3).copy()
         cols = st.columns(3)
-        medals = ["🥇 SKLEK BOSS", "🥈 SKLEK MASTER", "🥉 SKLEK PRO"]
+        medals = ["SKLEK BOSS", "SKLEK MASTER", "SKLEK PRO"]
 
         for col, medal in zip(cols, medals):
             with col:
@@ -509,9 +614,8 @@ def page_sklekovi(manager: GoogleSheetManager) -> None:
                 else:
                     st.metric(medal, "---", "")
 
-        # Kompletna ranglista
         st.markdown("---")
-        st.subheader("📊 KOMPLETNA RANGLISTA")
+        st.subheader("KOMPLETNA RANGLISTA")
         display_df = leaderboard[["Rang", "Učesnik", "Sklekovi"]].copy()
         st.dataframe(display_df, width="stretch", hide_index=True, height=400)
 
@@ -521,16 +625,16 @@ def page_sklekovi(manager: GoogleSheetManager) -> None:
 
 def page_igra(manager: GoogleSheetManager) -> None:
     """Leaderboard za Vinjak igricu"""
-    st.title("🎮 VINJAK IGRICA 🎮")
+    st.title("VINJAK IGRICA")
     st.markdown("#### Leaderboard igrača")
 
     if not manager.config.sheet_igra:
-        st.error("❌ Igrica leaderboard nije konfiguriran")
+        st.error("❌ Igrica leaderboard nije konfigurijan")
         return
 
     col1, col2 = st.columns([3, 1])
     with col2:
-        if st.button("🔄 Osvežite", width="stretch"):
+        if st.button("Osvežite", width="stretch", key="igra_refresh"):
             st.cache_resource.clear()
             st.rerun()
 
@@ -543,7 +647,6 @@ def page_igra(manager: GoogleSheetManager) -> None:
         df = DataProcessor.clean_columns(df)
         logger.info(f"Kolone iz igrice: {list(df.columns)}")
 
-        # Pronađi kolone - fleksibilna pretraga
         ime_col = DataProcessor.find_column(df, keywords=["name"], exclude=["timestamp"])
         poeni_col = DataProcessor.find_column(df, keywords=["poeni", "score", "rezultat"])
 
@@ -552,22 +655,19 @@ def page_igra(manager: GoogleSheetManager) -> None:
             st.info(f"Dostupne kolone: {list(df.columns)}")
             return
 
-        # Konvertuj poene
         df["poeni_int"] = pd.to_numeric(df[poeni_col], errors="coerce").fillna(0).astype(int)
 
-        # Sortiraj po poeni (bez groupby - svakog igrača samo jednom)
         leaderboard = df[[ime_col, "poeni_int"]].copy()
         leaderboard.columns = ["Igrač", "Poeni"]
         leaderboard = leaderboard.sort_values("Poeni", ascending=False).reset_index(drop=True)
         leaderboard["Rang"] = range(1, len(leaderboard) + 1)
 
-        # TOP 3
         st.markdown("---")
-        st.subheader("🏆 TOP 3 IGRAČA")
+        st.subheader("TOP 3 IGRAČA")
 
         top3 = leaderboard.head(3).copy()
         cols = st.columns(3)
-        medals = ["🥇 BROJ 1", "🥈 BROJ 2", "🥉 BROJ 3"]
+        medals = ["BROJ 1", "BROJ 2", "BROJ 3"]
 
         for col, medal in zip(cols, medals):
             with col:
@@ -578,9 +678,8 @@ def page_igra(manager: GoogleSheetManager) -> None:
                 else:
                     st.metric(medal, "---", "")
 
-        # Kompletna ranglista
         st.markdown("---")
-        st.subheader("📊 KOMPLETNA RANGLISTA")
+        st.subheader("KOMPLETNA RANGLISTA")
         display_df = leaderboard[["Rang", "Igrač", "Poeni"]].copy()
         st.dataframe(display_df, width="stretch", hide_index=True, height=400)
 
@@ -592,14 +691,13 @@ def page_igra(manager: GoogleSheetManager) -> None:
 def page_galery(manager: GoogleSheetManager) -> None:
     """Galerija oslikanih flase - direktno sa Google Drive-a"""
     st.title("GALERIJA OSLIKANIH FLAŠA VINJAKA")
-    st.markdown("#### Sve oslikane flaše sa festivala, a i malo pre...")
+    st.markdown("#### Sve oslikane flaše sa festivala")
 
     if not manager.config.drive_slike_id:
         st.error("❌ Google Drive folder nije konfiguriran")
         return
 
     try:
-        # Konekcija na Google Drive
         creds = service_account.Credentials.from_service_account_info(
             manager.config.credentials,
             scopes=["https://www.googleapis.com/auth/drive.readonly"],
@@ -610,7 +708,6 @@ def page_galery(manager: GoogleSheetManager) -> None:
 
         service = build("drive", "v3", credentials=creds)
 
-        # Preuzmi listu fajlova iz foldera
         results = (
             service.files()
             .list(
@@ -623,21 +720,18 @@ def page_galery(manager: GoogleSheetManager) -> None:
         files = results.get("files", [])
 
         if not files:
-            st.info("📝 Nema slika u Google Drive folderu")
+            st.info("Nema slika u Google Drive folderu")
             return
 
-        # Sortiraj po imenu
         files = sorted(files, key=lambda x: x["name"])
 
-        st.subheader(f"📸 {len(files)} Oslikanih Flaša Vinjaka")
+        st.subheader(f"{len(files)} Oslikanih Flaša Vinjaka")
 
-        # Prikazi u grid-u (3 kolone)
         cols = st.columns(3)
         for idx, file in enumerate(files):
             col = cols[idx % 3]
             with col:
                 try:
-                    # Preuzmi sliku kao binary
                     request = service.files().get_media(fileId=file["id"])
                     fh = io.BytesIO()
                     downloader = MediaIoBaseDownload(fh, request)
@@ -648,8 +742,7 @@ def page_galery(manager: GoogleSheetManager) -> None:
 
                     fh.seek(0)
 
-                    # Prikaži sliku
-                    st.image(fh, width="stretch")
+                    st.image(fh, width=300)
 
                 except Exception as e:
                     st.error(f"Greška pri učitavanju: {file['name']}")
@@ -667,48 +760,67 @@ def page_galery(manager: GoogleSheetManager) -> None:
 
 def main() -> None:
     """Main entry point"""
-    # Setup
     setup_page_config()
     setup_custom_css()
 
-    # Konfiguracija
     config = load_configuration()
     if not config.is_valid():
-        st.error("❌ GoogleCredentialsnisu dostupni!")
+        st.error("❌ Kredencijali nisu dostupni!")
         st.info("Postavite GOOGLE_CREDENTIALS_JSON environment varijablu")
         st.stop()
 
     manager = GoogleSheetManager(config)
 
-    # Sidebar navigacija
-    st.sidebar.title("🍇 VINJAK FESTIVAL")
-    page = st.sidebar.radio(
-        "Odaberi stranicu:",
-        ["🏆 Vinjaklija", "📖 Ispovedaonica", "💪 Sklekovi", "🎮 Igrica", "🍇 Galerija"],
+    # NAVBAR
+    st.markdown(
+        '<div class="navbar"><div class="navbar-title">🍇 VINJAK FESTIVAL</div></div>',
+        unsafe_allow_html=True,
     )
 
-    # Render stranica
-    if page == "🏆 Vinjaklija":
+    # NAV DUGMIĆI
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        if st.button("Vinjaklija", use_container_width=True, key="nav_vinjaklija"):
+            st.session_state.page = "Vinjaklija"
+    with col2:
+        if st.button("Ispovedaonica", use_container_width=True, key="nav_ispovedaonica"):
+            st.session_state.page = "Ispovedaonica"
+    with col3:
+        if st.button("Sklekovi", use_container_width=True, key="nav_sklekovi"):
+            st.session_state.page = "Sklekovi"
+    with col4:
+        if st.button("Igrica", use_container_width=True, key="nav_igrica"):
+            st.session_state.page = "Igrica"
+    with col5:
+        if st.button("Galerija", use_container_width=True, key="nav_galerija"):
+            st.session_state.page = "Galerija"
+
+    if "page" not in st.session_state:
+        st.session_state.page = "Vinjaklija"
+
+    st.markdown('<div class="content-wrapper">', unsafe_allow_html=True)
+
+    if st.session_state.page == "Vinjaklija":
         page_home(manager)
-    elif page == "📖 Ispovedaonica":
+    elif st.session_state.page == "Ispovedaonica":
         page_price(manager)
-    elif page == "💪 Sklekovi":
+    elif st.session_state.page == "Sklekovi":
         page_sklekovi(manager)
-    elif page == "🎮 Igrica":
+    elif st.session_state.page == "Igrica":
         page_igra(manager)
-    elif page == "🍇 Galerija":
+    elif st.session_state.page == "Galerija":
         page_galery(manager)
 
-    # Auto refresh
-    st.markdown("---")
-    st.sidebar.markdown("---")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    refresh_interval = st.sidebar.slider(
-        "Osvežavanje (sekundi)", min_value=5, max_value=120, value=30, step=5
+    st.markdown("---")
+
+    refresh_interval = st.slider(
+        "Osvežavanje (sekundi)", min_value=5, max_value=120, value=30, step=5, key="refresh"
     )
 
     now = datetime.now().strftime("%H:%M:%S")
-    st.sidebar.caption(f"⏰ {now} | Sledeće: ~{refresh_interval}s")
+    st.caption(f"⏰ {now} | Sledeće: ~{refresh_interval}s")
 
     time.sleep(refresh_interval)
     st.rerun()
