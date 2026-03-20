@@ -50,6 +50,8 @@ class GoogleSheetConfig:
     sheet_aktivnosti: Optional[str] = None
     sheet_price: Optional[str] = None
     sheet_sklekovi: Optional[str] = None
+    sheet_igra: Optional[str] = None
+    drive_slike_id: Optional[str] = None
     credentials: Optional[dict] = None
 
     def is_valid(self) -> bool:
@@ -75,6 +77,10 @@ def load_configuration() -> GoogleSheetConfig:
         sheet_price=os.getenv("GOOGLE_SHEET_ID_PRICE") or st.secrets.get("google_sheet_id_price"),
         sheet_sklekovi=os.getenv("GOOGLE_SHEET_ID_SKLEKOVI")
         or st.secrets.get("google_sheet_id_sklekovi"),
+        sheet_igra=os.getenv("GOOGLE_SHEET_ID_VINJAK_IGRA")
+        or st.secrets.get("google_sheet_id_vinjak_igra"),
+        drive_slike_id=os.getenv("GOOGLE_DRIVE_ID_SLIKE")
+        or st.secrets.get("google_drive_id_slike"),
     )
 
     # Kredencijali - Priority 1: Streamlit Secrets (TOML sekcija)
@@ -333,8 +339,8 @@ def setup_custom_css() -> None:
 
 def page_home(manager: GoogleSheetManager) -> None:
     """Leaderboard stranica"""
-    st.title("🍇 IZBOR ZA VINJAKLIJU 🍇")
-    st.markdown("#### Ko će se ispostaviti kao Vinjački vojvoda?")
+    st.title("IZBOR ZA VINJAKLIJU")
+    st.markdown("#### Live ranglist - Realtime ažuriranje")
 
     # Refresh dugme
     col1, col2 = st.columns([3, 1])
@@ -384,14 +390,10 @@ def page_home(manager: GoogleSheetManager) -> None:
 
 def page_price(manager: GoogleSheetManager) -> None:
     """Priče stranica sa submission formom i feed-om"""
-    st.title("📖 VINJAK ISPOVEDAONICA 📖")
+    st.title("VINJAK ISPOVEDAONICA")
     st.markdown(
         "Vreme je da tvoje Vinjačke dogodovštine napokon dobiju platformu! "
-        "Napiši svoju prelepu priču ispod i neka te misli vode u carstvo ljubavi i sreće. "
-        "Ili, ako kojim slučajem imaš neku tužnu ili srceparajuću priču, "
-        "ovo je mesto takođe savršeno za tako nešto. "
-        "Najbitnije je da priča uključuje Vinjak, a ostalo ćemo lako! "
-        "Ako nemaš priču, slobodno pročitaj tuđe - možda se pronađeš u nekoj od njih! 🍇"
+        "Napiši svoju priču i deli sa drugima!"
     )
 
     # SUBMISSION FORMA
@@ -410,6 +412,7 @@ def page_price(manager: GoogleSheetManager) -> None:
                 row = [timestamp, name, story]
 
                 logger.info(f"Slanje reda: {row}")
+                st.info(f"Debug: Dodavam red: {row}")
 
                 if manager.append_row(manager.config.sheet_price, row):
                     st.success("✅ Priča poslata!")
@@ -451,7 +454,7 @@ def page_price(manager: GoogleSheetManager) -> None:
 
 def page_sklekovi(manager: GoogleSheetManager) -> None:
     """Sklekovi leaderboard stranica"""
-    st.title("💪 VINJAK SKLEKOVI 💪")
+    st.title("VINJAK SKLEKOVI")
     st.markdown("#### Tabela najsklekača")
 
     if not manager.config.sheet_sklekovi:
@@ -484,7 +487,7 @@ def page_sklekovi(manager: GoogleSheetManager) -> None:
             pd.to_numeric(df[sklekovi_col], errors="coerce").fillna(0).astype(int)
         )
 
-        leaderboard = df.groupby(ime_col)["broj_sklekova"].sum().reset_index()
+        leaderboard = df[[ime_col, "broj_sklekova"]].copy()
         leaderboard.columns = ["Učesnik", "Sklekovi"]
         leaderboard = leaderboard.sort_values("Sklekovi", ascending=False).reset_index(drop=True)
         leaderboard["Rang"] = range(1, len(leaderboard) + 1)
@@ -495,7 +498,7 @@ def page_sklekovi(manager: GoogleSheetManager) -> None:
 
         top3 = leaderboard.head(3).copy()
         cols = st.columns(3)
-        medals = ["🥇", "🥈", "🥉"]
+        medals = ["🥇 SKLEK BOSS", "🥈 SKLEK MASTER", "🥉 SKLEK PRO"]
 
         for col, medal in zip(cols, medals):
             with col:
@@ -514,6 +517,147 @@ def page_sklekovi(manager: GoogleSheetManager) -> None:
 
     except Exception as e:
         st.error(f"❌ Greška pri obradi: {e}")
+
+
+def page_igra(manager: GoogleSheetManager) -> None:
+    """Leaderboard za Vinjak igricu"""
+    st.title("🎮 VINJAK IGRICA 🎮")
+    st.markdown("#### Leaderboard igrača")
+
+    if not manager.config.sheet_igra:
+        st.error("❌ Igrica leaderboard nije konfiguriran")
+        return
+
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🔄 Osvežite", width="stretch"):
+            st.cache_resource.clear()
+            st.rerun()
+
+    df = manager.load_data(manager.config.sheet_igra)
+    if df.empty:
+        st.warning("⚠️ Nema podataka")
+        return
+
+    try:
+        df = DataProcessor.clean_columns(df)
+        logger.info(f"Kolone iz igrice: {list(df.columns)}")
+
+        # Pronađi kolone - fleksibilna pretraga
+        ime_col = DataProcessor.find_column(df, keywords=["name"], exclude=["timestamp"])
+        poeni_col = DataProcessor.find_column(df, keywords=["poeni", "score", "rezultat"])
+
+        if not all([ime_col, poeni_col]):
+            st.error("❌ Kolone nisu pronađene!")
+            st.info(f"Dostupne kolone: {list(df.columns)}")
+            return
+
+        # Konvertuj poene
+        df["poeni_int"] = pd.to_numeric(df[poeni_col], errors="coerce").fillna(0).astype(int)
+
+        # Sortiraj po poeni (bez groupby - svakog igrača samo jednom)
+        leaderboard = df[[ime_col, "poeni_int"]].copy()
+        leaderboard.columns = ["Igrač", "Poeni"]
+        leaderboard = leaderboard.sort_values("Poeni", ascending=False).reset_index(drop=True)
+        leaderboard["Rang"] = range(1, len(leaderboard) + 1)
+
+        # TOP 3
+        st.markdown("---")
+        st.subheader("🏆 TOP 3 IGRAČA")
+
+        top3 = leaderboard.head(3).copy()
+        cols = st.columns(3)
+        medals = ["🥇 BROJ 1", "🥈 BROJ 2", "🥉 BROJ 3"]
+
+        for col, medal in zip(cols, medals):
+            with col:
+                if len(top3) > 0:
+                    row = top3.iloc[0]
+                    st.metric(medal, row["Igrač"], f"{int(row['Poeni'])} poena")
+                    top3 = top3.iloc[1:]
+                else:
+                    st.metric(medal, "---", "")
+
+        # Kompletna ranglista
+        st.markdown("---")
+        st.subheader("📊 KOMPLETNA RANGLISTA")
+        display_df = leaderboard[["Rang", "Igrač", "Poeni"]].copy()
+        st.dataframe(display_df, width="stretch", hide_index=True, height=400)
+
+    except Exception as e:
+        logger.error(f"Greška pri obradi igrice: {e}")
+        st.error(f"❌ Greška pri obradi: {e}")
+
+
+def page_galery(manager: GoogleSheetManager) -> None:
+    """Galerija oslikanih flase - direktno sa Google Drive-a"""
+    st.title("GALERIJA OSLIKANIH FLAŠA VINJAKA")
+    st.markdown("#### Sve oslikane flaše sa festivala, a i malo pre...")
+
+    if not manager.config.drive_slike_id:
+        st.error("❌ Google Drive folder nije konfiguriran")
+        return
+
+    try:
+        # Konekcija na Google Drive
+        creds = service_account.Credentials.from_service_account_info(
+            manager.config.credentials,
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        )
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaIoBaseDownload
+        import io
+
+        service = build("drive", "v3", credentials=creds)
+
+        # Preuzmi listu fajlova iz foldera
+        results = (
+            service.files()
+            .list(
+                q=f"'{manager.config.drive_slike_id}' in parents and trashed=false and mimeType contains 'image/'",
+                fields="files(id, name, mimeType)",
+                pageSize=100,
+            )
+            .execute()
+        )
+        files = results.get("files", [])
+
+        if not files:
+            st.info("📝 Nema slika u Google Drive folderu")
+            return
+
+        # Sortiraj po imenu
+        files = sorted(files, key=lambda x: x["name"])
+
+        st.subheader(f"📸 {len(files)} Oslikanih Flaša Vinjaka")
+
+        # Prikazi u grid-u (3 kolone)
+        cols = st.columns(3)
+        for idx, file in enumerate(files):
+            col = cols[idx % 3]
+            with col:
+                try:
+                    # Preuzmi sliku kao binary
+                    request = service.files().get_media(fileId=file["id"])
+                    fh = io.BytesIO()
+                    downloader = MediaIoBaseDownload(fh, request)
+                    done = False
+
+                    while not done:
+                        status, done = downloader.next_chunk()
+
+                    fh.seek(0)
+
+                    # Prikaži sliku
+                    st.image(fh, width="stretch")
+
+                except Exception as e:
+                    st.error(f"Greška pri učitavanju: {file['name']}")
+                    logger.error(f"Greška pri učitavanju slike {file['name']}: {e}")
+
+    except Exception as e:
+        logger.error(f"Greška pri učitavanju galerije: {e}")
+        st.error(f"❌ Greška pri učitavanju galerije: {e}")
 
 
 # ============================================================================
@@ -540,16 +684,20 @@ def main() -> None:
     st.sidebar.title("🍇 VINJAK FESTIVAL")
     page = st.sidebar.radio(
         "Odaberi stranicu:",
-        ["🏆 Leaderboard", "📖 Priče", "💪 Sklekovi"],
+        ["🏆 Vinjaklija", "📖 Ispovedaonica", "💪 Sklekovi", "🎮 Igrica", "🍇 Galerija"],
     )
 
     # Render stranica
-    if page == "🏆 Leaderboard":
+    if page == "🏆 Vinjaklija":
         page_home(manager)
-    elif page == "📖 Priče":
+    elif page == "📖 Ispovedaonica":
         page_price(manager)
     elif page == "💪 Sklekovi":
         page_sklekovi(manager)
+    elif page == "🎮 Igrica":
+        page_igra(manager)
+    elif page == "🍇 Galerija":
+        page_galery(manager)
 
     # Auto refresh
     st.markdown("---")
