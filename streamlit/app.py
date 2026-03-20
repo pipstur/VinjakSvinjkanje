@@ -504,7 +504,9 @@ def page_home(manager: GoogleSheetManager) -> None:
 def page_price(manager: GoogleSheetManager) -> None:
     """Priče stranica sa submission formom i feed-om"""
     st.title("VINJAK ISPOVEDAONICA")
-    st.markdown("Vreme je da tvoje Vinjačke dogodovštine napokon dobiju platformu!")
+    st.markdown(
+        "Vreme je da tvoje Vinjačke dogodovštine napokon dobiju platformu! Napiši svoju prelepu priču ispod i neka te misli vode u carstvo ljubavi i sreće. Ili, ako kojim slučajem imaš neku tužnu ili srceparajuću priču, ovo je mesto takođe savršeno za tako nešto. Najbitnije je da priča uključuje Vinjak, a ostalo ćemo lako!"
+    )
 
     st.subheader("Podeli svoju priču!")
 
