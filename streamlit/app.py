@@ -59,39 +59,50 @@ class GoogleSheetConfig:
 
 def load_configuration() -> GoogleSheetConfig:
     """
-    Učitava konfiguraciju iz os.env ili fajla
+    Učitava konfiguraciju iz Streamlit Secrets ili os.env ili fajla
 
     Priority:
-    1. GOOGLE_CREDENTIALS_JSON env varijabla
-    2. Lokalni JSON fajl
+    1. Streamlit Secrets (st.secrets["google_credentials"])
+    2. GOOGLE_CREDENTIALS_JSON env varijabla (kao string)
+    3. Lokalni JSON fajl
     """
     logger.info("Učitavanje konfiguracije...")
 
     # Sheet ID-evi
     config = GoogleSheetConfig(
-        sheet_aktivnosti=os.getenv("GOOGLE_SHEET_ID_AKTIVNOSTI"),
-        sheet_price=os.getenv("GOOGLE_SHEET_ID_PRICE"),
-        sheet_sklekovi=os.getenv("GOOGLE_SHEET_ID_SKLEKOVI"),
+        sheet_aktivnosti=os.getenv("GOOGLE_SHEET_ID_AKTIVNOSTI")
+        or st.secrets.get("google_sheet_id_aktivnosti"),
+        sheet_price=os.getenv("GOOGLE_SHEET_ID_PRICE") or st.secrets.get("google_sheet_id_price"),
+        sheet_sklekovi=os.getenv("GOOGLE_SHEET_ID_SKLEKOVI")
+        or st.secrets.get("google_sheet_id_sklekovi"),
     )
 
-    # Kredencijali - Priority 1: env
-    creds_json_str = os.getenv("GOOGLE_CREDENTIALS_JSON")
-    if creds_json_str:
+    # Kredencijali - Priority 1: Streamlit Secrets (TOML sekcija)
+    if "google_credentials" in st.secrets:
         try:
-            config.credentials = json.loads(creds_json_str)
-            logger.info("✓ Kredencijali iz environment varijable")
-        except json.JSONDecodeError as e:
-            logger.error(f"Greška pri parsiranju JSON-a: {e}")
+            config.credentials = dict(st.secrets["google_credentials"])
+            logger.info("✓ Kredencijali iz Streamlit Secrets")
+        except Exception as e:
+            logger.error(f"Greška pri čitanju Secrets: {e}")
     else:
-        # Priority 2: lokalni fajl
-        creds_file = Path("vinjak-fest-projekat-d1ab0846a2eb.json")
-        if creds_file.exists():
+        # Priority 2: environment varijabla kao JSON string
+        creds_json_str = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        if creds_json_str:
             try:
-                with open(creds_file, "r", encoding="utf-8") as f:
-                    config.credentials = json.load(f)
-                logger.info("✓ Kredencijali iz fajla")
-            except Exception as e:
-                logger.error(f"Greška pri čitanju fajla: {e}")
+                config.credentials = json.loads(creds_json_str)
+                logger.info("✓ Kredencijali iz environment varijable")
+            except json.JSONDecodeError as e:
+                logger.error(f"Greška pri parsiranju JSON-a: {e}")
+        else:
+            # Priority 3: lokalni fajl
+            creds_file = Path("vinjak-fest-projekat-d1ab0846a2eb.json")
+            if creds_file.exists():
+                try:
+                    with open(creds_file, "r", encoding="utf-8") as f:
+                        config.credentials = json.load(f)
+                    logger.info("✓ Kredencijali iz fajla")
+                except Exception as e:
+                    logger.error(f"Greška pri čitanju fajla: {e}")
 
     if not config.is_valid():
         logger.error("❌ Kredencijali nisu dostupni!")
